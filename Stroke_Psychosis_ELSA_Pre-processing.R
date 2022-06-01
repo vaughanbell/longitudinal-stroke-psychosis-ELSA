@@ -1,11 +1,11 @@
 ###############################################################################################################
 #
-# Pre-processing script for Alvin-Richards et al
+# Pre-processing script for Richards-Belle et al
 #
 # This script pre-processes the ELSA data files by recoding variables merging datafiles from
 # different waves into a single R Data File (.rda file)
 #
-# Analysis for paper completed on R 4.1.2
+# Analysis for study completed on R 4.1.2
 #
 ###############################################################################################################
 
@@ -22,10 +22,10 @@ library(stringr)    # used to manipulate string variables
 library(janitor)
 
 # Location of data directory - please complete for your local system
-data_dir <- "/home/main/Dropbox/Studies/StrokePsychosisELSA_Alvin/Analysis/Data/"
+data_dir <- "/home/main/data/StrokePsychosisELSAData/"
 
 # Location of directory for writing of recoded and merged dataset as .rda file - please complete for your local system
-output_dir <- "/home/main/Dropbox/Studies/StrokePsychosisELSA_Alvin/Analysis/TransformedData/"
+output_dir <- "/home/main/data/StrokePsychosisELSATransformedData/"
 
 # Datafile names
 elsaindex_file <- paste(data_dir, "/UKDA-5050-spss/spss/spss25/index_file_wave_0-wave_5_v2.sav", sep = "")
