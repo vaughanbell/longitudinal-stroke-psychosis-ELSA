@@ -22,7 +22,7 @@ This archive contains the R code for the analysis reported in the above study. T
 
 This repository contains:
 
-1.  [Stroke Psychosis ELSA Pre-processing.R](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Stroke_Psychosis_ELSA_Pre-processing.R) - a pre-processing script that recodes and merges ELSA data files into a single .rda file for analysis by other Jupyter notebooks
+1.  [Stroke Psychosis ELSA Pre-processing.R](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Stroke_Psychosis_ELSA_Pre-processing.R) - a pre-processing script that recodes and merges ELSA data files into a single .rda file for analysis by Jupyter notebooks
 2.  [Bell_et_al_ELSA_Notebook1.ipynb]() - etc etc etc
 3.  [Bell_et_al_ELSA_Notebook1.ipynb]() - etc etc etc
 4.  [Bell_et_al_ELSA_Notebook1.ipynb]() - etc etc etc
