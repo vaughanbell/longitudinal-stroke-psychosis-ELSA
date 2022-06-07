@@ -25,7 +25,7 @@ This repository contains:
 1.  [Stroke Psychosis ELSA Pre-processing.R](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Stroke_Psychosis_ELSA_Pre-processing.R) - a pre-processing script that recodes and merges ELSA data files into a single .rda file for analysis by Jupyter notebooks
 2.  [Richards-Belle_et_al_Descriptives_Tables.ipynb](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Richards-Belle_et_al_Descriptives_Tables.ipynb) - A Jupyter notebook that calculates the demographic and descriptive statistics reported in the study
 3.  [Richards-Belle_et_al_Stroke_After_Psychosis_Analysis.ipynb](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Richards-Belle_et_al_Stroke_After_Psychosis_Analysis.ipynb) - A Jupyter notebook that reports the survival analyses for stroke after psychosis
-4.  [Bell_et_al_ELSA_Notebook_TBC.ipynb]() - tbc tbc tbc
+4.  [Richards-Belle_et_al_Psychosis_After_Stroke_Analysis.ipynb](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Richards-Belle_et_al_Psychosis_After_Stroke_Analysis.ipynb) - A Jupyter notebook that reports the survival analyses for psychosis after stroke
 
 ### Dataset
 
