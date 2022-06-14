@@ -65,7 +65,7 @@ elsaindex <- read.spss(elsaindex_file, to.data.frame = TRUE, use.value.labels = 
 # count the number of observations in dataset
 #elsaindex %>%
 #  count()
-# n=37,938 (user guide says file contains a total of 37,949 but is from 2013 - maybe some people have withdrawn?)
+# n=37,938 (user guide says file contains a total of 37,949 but is from 2013; likely some participants have withdrawn since)
 
 # check for duplicates in ID number
 #elsaindex %>%
@@ -84,8 +84,6 @@ index <- select(elsaindex,
                 mortalitywave = mortwave,
                 sex, dobyear)
 
-#table(index$mortalitywave, useNA = "always")
-
 # ASSIGNING LABELS/CODES
 # Sex
 index$sex <- factor(index$sex, levels = c(1, 2), labels = c("Male", "Female"))
@@ -94,18 +92,13 @@ index$sex <- factor(index$sex, levels = c(1, 2), labels = c("Male", "Female"))
 index$dobyear[index$dobyear == -8] <- NA # "unknown"
 index$dobyear[index$dobyear == -7] <- 1914 # "respondent >= 99 as at 01/03/2013" # the DOB year was censored for participants >99 so this has been recoded manually to the highest age
 
-# Wave participation status (these are ultimately all not essential to the analysis)
+# Wave participation status
 #index$wave0indoutcome <- factor(index$wave0indoutcome, levels = c(-2, -1, 51, 52, 53, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 340, 431, 432, 440, 450, 510, 521, 540), 
 #                                labels = c("Not in household or ineligible for interview", "Was in household but does not have an outcome code", "Full interview", "Partial interview", 
 #                                           "Full interview in translation", "No contact", "Personal refusal", "Proxy refusal", "Broken appointment", "Ill at home", "Ill in hospital",
 #                                           "Away from home", "Senile/incapacitated", "Inadequate English", "Other reasons - no interview", "No contact", "Refused before interview (personal)", 
 #                                           "Refused before interview (proxy)", "Refusal during interview", "Broken appointment, no recontact", "Ill at home during survey period", 
 #                                           "Away during survey period", "Language difficulties"))
-
-#index$wave0nurseoutcome <- factor(index$wave0nurseoutcome, levels = c(-5, -1, 69, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90),
-#                                  labels = c("No nurse assigned", "Not eligible/no consent", "Lost data after interview", "Refused nurse visit - not to be interviewed", 
-#                                             "Schedule completed", "Schedule not completed, no contact made", "Refusal by person", "Proxy refusal", "Broken appointment", "Ill at home", 
-#                                             "Ill at hospital", "Away", "Other", "Refusal to office"))
 
 index$indexfinstatw1 <- factor(index$indexfinstatw1, levels = c(1, 4, 5), labels = c("C1CM", "C1YP", "C1NP1"))
 
@@ -203,7 +196,7 @@ elsawave1 <- read.spss(elsawave1_file, to.data.frame = TRUE, use.value.labels = 
 #  filter(n>1)
 # n=0
 
-# SELECT SUBSET OF VARIABLES (note that each wave has a separate data dictionary with the variable codes and definitions; variables are organised slightly differently in some waves)
+# SELECT SUBSET OF VARIABLES (note that each wave has a separate data dictionary with the variable codes and definitions (see UK Data Service); variables are organised slightly differently in some waves)
 wave1 <- select(elsawave1,
                 idauniq, w1finstat = finstat, w1indout = indoc, 
                 hedim01, hedim02, hedim03, hedim04, hedim05, hedim06, hedim07,
@@ -247,26 +240,10 @@ wave1$w1strokeage[wave1$w1strokeage == -1] <- NA # not applicable
 wave1$w0strokeage[wave1$w0strokeage == -1] <- NA
 #table(wave1$w0strokeage)
 
-# Currently taking medicines/tablets/pills for high blood pressure
-wave1$w1hypertensionmeds[wave1$w1hypertensionmeds < 0] <- NA #"NA or refused"
-wave1$w1hypertensionmeds[wave1$w1hypertensionmeds < 2] <- 0 #"no"
-wave1$w1hypertensionmeds[wave1$w1hypertensionmeds == 2] <- 1 #"yes"
-#table(wave1$w1hypertensionmeds)
-
-# Remaining problems because of your strokes
-wave1$w1strokeremainproblems[wave1$w1strokeremainproblems == 2] <- 0 #"no"
-wave1$w1strokeremainproblems[wave1$w1strokeremainproblems < 0] <- NA # NA
-#table(wave1$w1strokeremainproblems)
-
 # During the last two years, have you had the emotional/psych/nervous problems?
 wave1$w1psychiatrciproblemlast2yr[wave1$w1psychiatrciproblemlast2yr == 2] <- 0 # no
 wave1$w1psychiatrciproblemlast2yr[wave1$w1psychiatrciproblemlast2yr < 0] <- NA # NA/refused/don't know
 #table(wave1$w1psychiatrciproblemlast2yr)
-
-# At what age were you told you had an emotional/psychiatric/nervious problem? May not relate to the psychosis diagnosis.
-wave1$w1psychiatricage[wave1$w1psychiatricage == -8] <- NA # "don't know"
-wave1$w1psychiatricage[wave1$w1psychiatricage == -1] <- NA # not applicable
-#table(wave1$w1psychiatricage)
 
 # Stroke (doctor diagnosed)
 #Create column called w1strokeany which defines a case where 8 is recorded in any of the hedi variables
@@ -475,11 +452,6 @@ wave2$w2strokelast2yrm[wave2$w2strokelast2yrm < 0] <- NA
 wave2$w2nstrokessincew1[wave2$w2nstrokessincew1 < 0] <- NA # not applicable
 #table(wave2$w2nstrokessincew1)
 
-# Remaining problems because of your strokes
-wave2$w2strokeremainproblems[wave2$w2strokeremainproblems == 2] <- 0 #"no"
-wave2$w2strokeremainproblems[wave2$w2strokeremainproblems < 0] <- NA # NA
-#table(wave2$w2strokeremainproblems)
-
 # Disputed w1 stroke reasons
 wave2$w2disputew1stroke[wave2$w2disputew1stroke < 0] <- NA # refused, don't know, not applicable
 wave2$w2disputew1stroke[wave2$w2disputew1stroke == 1] <- "never had"
@@ -629,11 +601,6 @@ wave3 <- wave3 %>%
 #table(wave3$w3psychosisany)
 #n=32
 
-# Remaining problems because of your strokes
-wave3$w3strokeremainproblems[wave3$w3strokeremainproblems == 2] <- 0 #"no"
-wave3$w3strokeremainproblems[wave3$w3strokeremainproblems < 0] <- NA # NA
-#table(wave3$w3strokeremainproblems)
-
 # Disputed w2 stroke reasons
 wave3$w3disputew2stroke[wave3$w3disputew2stroke < 0] <- NA # refused, don't know, not applicable
 wave3$w3disputew2stroke[wave3$w3disputew2stroke == 1] <- "never had"
@@ -779,11 +746,6 @@ wave4 <- wave4 %>%
                                     psychosis == 1 ~ '1',
                                     TRUE ~ '0'))
 #table(wave4$w4psychosisany) #n=32
-
-# Remaining problems because of your strokes
-wave4$w4strokeremainproblems[wave4$w4strokeremainproblems == 2] <- 0 #"no"
-wave4$w4strokeremainproblems[wave4$w4strokeremainproblems < 0] <- NA # NA
-#table(wave4$w4strokeremainproblems)
 
 # Disputed w3 stroke reasons
 wave4$w4disputew3stroke[wave4$w4disputew3stroke < 0] <- NA # refused, don't know, not applicable
@@ -1472,7 +1434,6 @@ wave9[wave9$idauniq==105348, "w9region"] <- NA # these were changed to NA as con
 wave9[wave9$idauniq==116848, "w9region"] <- NA
 wave9[wave9$idauniq==909548, "w9region"] <- NA
 table(wave9$w9region, useNA = "always")
-
 
 #Create column called w9psychosisany which defines a case where 1 is recorded in w9 halluc, schz or psychosis variables
 wave9 <- wave9 %>% 
@@ -2264,7 +2225,7 @@ waves12345 <- waves12345 %>%
                                          w1participated == 1 ~ 1,
                                          TRUE ~ 0))
 
-#Remove participants that did not take part in any wave 1-9 (as they are not needed for this analyses)
+#Remove participants that did not take part in any wave 1-9 (as they are not needed for the analyses)
 waves12345 <- waves12345 %>%
   filter(wavefirstparticipate != 0)
 
@@ -2478,32 +2439,6 @@ waves12345 <- waves12345 %>%
                                           TRUE ~ 'no participation'))
 #table(waves12345$strokepsychosisorder)
 
-#Create new variable with stroke, depression and death order categories
-waves12345 <- waves12345 %>% 
-  mutate(strokedepressionorder = case_when(wavefirstreport_stroke == 0 & wavefirstreport_death < 7 & wavefirstreport_depression >= 1 ~ 'depression then died',
-                                           wavefirstreport_depression == 0 & wavefirstreport_death < 7 & wavefirstreport_stroke >= 0.5 ~ 'stroke then died',
-                                           wavefirstreport_depression >= 1 & wavefirstreport_stroke == 0 & !wavefirstreport_death %in% (1:6) ~ 'depression only',
-                                           wavefirstreport_depression == 0 & wavefirstreport_stroke >= 0.5 & !wavefirstreport_death %in% (1:6) ~ 'stroke only',
-                                           wavefirstreport_depression != 0 & wavefirstreport_stroke != 0 & wavefirstreport_stroke < wavefirstreport_depression ~ 'stroke then depression',
-                                           wavefirstreport_depression != 0 & wavefirstreport_stroke != 0 & wavefirstreport_depression < wavefirstreport_stroke ~ 'depression then stroke',
-                                           wavefirstreport_depression != 0 & wavefirstreport_stroke != 0 & wavefirstreport_stroke == wavefirstreport_depression ~ 'same time',
-                                           wavefirstparticipate >= 1 & wavefirstreport_depression == 0 & wavefirstreport_stroke == 0 ~ 'no stroke or depression',
-                                           TRUE ~ 'no participation'))
-#table(waves12345$strokedepressionorder, useNA = "always")
-
-#Create new variable with stroke, anxiety and death order categories
-waves12345 <- waves12345 %>% 
-  mutate(strokeanxietyorder = case_when(wavefirstreport_stroke == 0 & wavefirstreport_death < 7 & wavefirstreport_anxiety >= 1 ~ 'anxiety then died',
-                                        wavefirstreport_anxiety == 0 & wavefirstreport_death < 7 & wavefirstreport_stroke >= 0.5 ~ 'stroke then died',
-                                        wavefirstreport_anxiety >= 1 & wavefirstreport_stroke == 0 & !wavefirstreport_death %in% (1:6) ~ 'anxiety only',
-                                        wavefirstreport_anxiety == 0 & wavefirstreport_stroke >= 0.5 & !wavefirstreport_death %in% (1:6) ~ 'stroke only',
-                                        wavefirstreport_anxiety != 0 & wavefirstreport_stroke != 0 & wavefirstreport_stroke < wavefirstreport_depression ~ 'stroke then anxiety',
-                                        wavefirstreport_anxiety != 0 & wavefirstreport_stroke != 0 & wavefirstreport_depression < wavefirstreport_stroke ~ 'anxiety then stroke',
-                                        wavefirstreport_anxiety != 0 & wavefirstreport_stroke != 0 & wavefirstreport_stroke == wavefirstreport_depression ~ 'same time',
-                                        wavefirstparticipate >= 1 & wavefirstreport_anxiety == 0 & wavefirstreport_stroke == 0 ~ 'no stroke or anxiety',
-                                        TRUE ~ 'no participation'))
-#table(waves12345$strokeanxietyorder, useNA = "always")
-
 #Create column combining all reported ethnicity (where discrepant ethnicity reported across waves, then most common one is used)
 
 #table(waves12345$w1ethnicgroup, useNA = "always")
@@ -2601,7 +2536,6 @@ waves12345 <- waves12345 %>%
   mutate(strokeonly = case_when(strokepsychosisorder == "stroke only" ~ 1, 
                                 strokepsychosisorder == "stroke then died" ~ 1,
                                 TRUE ~ 0))
-
 
 
 #Create variable defining stroke/psychosis categories (3 groups - does not consider order of events)
