@@ -26,6 +26,7 @@ This repository contains:
 2.  [Richards-Belle_et_al_Descriptives_Tables.ipynb](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Richards-Belle_et_al_Descriptives_Tables.ipynb) - A Jupyter notebook that calculates the demographic and descriptive statistics reported in the study
 3.  [Richards-Belle_et_al_Stroke_After_Psychosis_Analysis.ipynb](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Richards-Belle_et_al_Stroke_After_Psychosis_Analysis.ipynb) - A Jupyter notebook that reports the survival analyses for stroke after psychosis
 4.  [Richards-Belle_et_al_Psychosis_After_Stroke_Analysis.ipynb](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Richards-Belle_et_al_Psychosis_After_Stroke_Analysis.ipynb) - A Jupyter notebook that reports the survival analyses for psychosis after stroke
+5.  [Richards-Belle_et_al_WithImputedMissingData.ipynb](https://github.com/vaughanbell/stroke-psychosis-bidirectional-trajectory/blob/main/Richards-Belle_et_al_WithImputedMissingData.ipynb) - A Jupyter notebook that reports the Cox proportional hazards regression analyses but with missing demographics imputed
 
 ### Dataset
 
