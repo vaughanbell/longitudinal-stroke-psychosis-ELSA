@@ -12,22 +12,29 @@
 # This script is to create the master dataset of data from each ELSA study wave. 
 # Wave-specific variables are named e.g. w1depression (for depression from wave 1).
 
-# Wipe everything from memory, useful to ensure  script runs from a blank slate.
-#rm(list = ls())
+# This script covers:
+# - Creation of a master dataset of data from each ELSA study wave (Wave-specific variables are named e.g. w1depression (for depression from wave 1)).
+# - Creation of complete case survival analysis datasets
+# - Creation of multiple imputation datasets for survival analysis
 
-# LOAD PACKAGES
+# Clear memory
+rm(list = ls())
+
+# Load packages
 library(dplyr)      # used as main data manipulation package
 library(foreign)    # allows import of SPSS files
 library(stringr)    # used to manipulate string variables
-library(janitor)
+library(missForest) # used for multiple imputation
+library(doParallel)
+library(doRNG)
 
-# Location of data directory - please complete for your local system
+# Location of data directory
 data_dir <- "/home/main/data/StrokePsychosisELSAData/"
 
-# Location of directory for writing of recoded and merged dataset as .rda file - please complete for your local system
+# Location of directory for writing transformed / pre-processed data files to
 output_dir <- "/home/main/data/StrokePsychosisELSATransformedData/"
 
-# Datafile names
+# Data file names
 elsaindex_file <- paste(data_dir, "/UKDA-5050-spss/spss/spss25/index_file_wave_0-wave_5_v2.sav", sep = "")
 
 elsawave1_file <- paste(data_dir, "/UKDA-5050-spss/spss/spss25/wave_1_core_data_v3.sav", sep="")
@@ -54,7 +61,8 @@ elsawave0_file <- paste(data_dir, "/UKDA-5050-spss/spss/spss25/wave_0_common_var
 wave01998_file <- paste(data_dir, "/UKDA-5050-spss/spss/spss25/wave_0_1998_data.sav", sep="")
 wave01999_file <- paste(data_dir, "/UKDA-5050-spss/spss/spss25/wave_0_1999_data.sav", sep="")
 
-# IMPORT DATA
+# Import data
+
 # ELSA index file
 # ELSA Index File (Waves 0–5) including key status variables for each wave such as fieldwork issue status and outcome codes, mortality status. 
 # It has not been possible to update the Index File since Wave 5 as no further updates to mortality data have been received from NHS Digital.
@@ -65,7 +73,7 @@ elsaindex <- read.spss(elsaindex_file, to.data.frame = TRUE, use.value.labels = 
 # count the number of observations in dataset
 #elsaindex %>%
 #  count()
-# n=37,938 (user guide says file contains a total of 37,949 but is from 2013; likely some participants have withdrawn since)
+# n=37,938 (user guide says file contains a total of 37,949 but is from 2013 - maybe some people have withdrawn?)
 
 # check for duplicates in ID number
 #elsaindex %>%
@@ -84,21 +92,28 @@ index <- select(elsaindex,
                 mortalitywave = mortwave,
                 sex, dobyear)
 
+#table(index$mortalitywave, useNA = "always")
+
 # ASSIGNING LABELS/CODES
 # Sex
 index$sex <- factor(index$sex, levels = c(1, 2), labels = c("Male", "Female"))
 
-# DOB year
+# DoB year
 index$dobyear[index$dobyear == -8] <- NA # "unknown"
 index$dobyear[index$dobyear == -7] <- 1914 # "respondent >= 99 as at 01/03/2013" # the DOB year was censored for participants >99 so this has been recoded manually to the highest age
 
-# Wave participation status
+# Wave participation status (these are ultimately all not essential to the analysis)
 #index$wave0indoutcome <- factor(index$wave0indoutcome, levels = c(-2, -1, 51, 52, 53, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 340, 431, 432, 440, 450, 510, 521, 540), 
 #                                labels = c("Not in household or ineligible for interview", "Was in household but does not have an outcome code", "Full interview", "Partial interview", 
 #                                           "Full interview in translation", "No contact", "Personal refusal", "Proxy refusal", "Broken appointment", "Ill at home", "Ill in hospital",
 #                                           "Away from home", "Senile/incapacitated", "Inadequate English", "Other reasons - no interview", "No contact", "Refused before interview (personal)", 
 #                                           "Refused before interview (proxy)", "Refusal during interview", "Broken appointment, no recontact", "Ill at home during survey period", 
 #                                           "Away during survey period", "Language difficulties"))
+
+#index$wave0nurseoutcome <- factor(index$wave0nurseoutcome, levels = c(-5, -1, 69, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90),
+#                                  labels = c("No nurse assigned", "Not eligible/no consent", "Lost data after interview", "Refused nurse visit - not to be interviewed", 
+#                                             "Schedule completed", "Schedule not completed, no contact made", "Refusal by person", "Proxy refusal", "Broken appointment", "Ill at home", 
+#                                             "Ill at hospital", "Away", "Other", "Refusal to office"))
 
 index$indexfinstatw1 <- factor(index$indexfinstatw1, levels = c(1, 4, 5), labels = c("C1CM", "C1YP", "C1NP1"))
 
@@ -179,7 +194,7 @@ index$mortalitywave <- factor(index$mortalitywave, levels = c(-5, 0, 11, 12, 13,
                                          "Post-W5 issue & Pre -W6 issue -W6 sampling", "Post-W5 issue and pre-W6 issue - external update"))
 
 # ELSA wave 1 data
-#Wave 1 data collection took place March 2002 – March 2003
+# Wave 1 data collection took place March 2002 – March 2003
 
 # IMPORT DATA
 elsawave1 <- read.spss(elsawave1_file, to.data.frame = TRUE, use.value.labels = FALSE)
@@ -196,7 +211,7 @@ elsawave1 <- read.spss(elsawave1_file, to.data.frame = TRUE, use.value.labels = 
 #  filter(n>1)
 # n=0
 
-# SELECT SUBSET OF VARIABLES (note that each wave has a separate data dictionary with the variable codes and definitions (see UK Data Service); variables are organised slightly differently in some waves)
+# SELECT SUBSET OF VARIABLES (note that each wave has a separate data dictionary with the variable codes and definitions; variables are organised slightly differently in some waves)
 wave1 <- select(elsawave1,
                 idauniq, w1finstat = finstat, w1indout = indoc, 
                 hedim01, hedim02, hedim03, hedim04, hedim05, hedim06, hedim07,
@@ -207,13 +222,13 @@ wave1 <- select(elsawave1,
                 w1smokeever = hesmk, w1smokenow = heska, w1weekdaysmoke = heskb, w1weekendsmoke = heskc,
                 w1alcohol = heala, w1vigorousphyact = heacta, w1modphysact = heactb, w1mildphysact = heactc)
 
-#CODING/LABELLING
+# CODING/LABELLING
 
-#White/non-white ethnicity
+# White/non-white ethnicity
 wave1$w1ethnicgroup <- factor(wave1$w1ethnicgroup, levels = c(1, 2), labels = c("white", "non-white"))
 # table(wave1$w1ethnicgroup)
 
-#Region
+# Region
 str_squish(wave1$w1region)
 wave1$w1region [wave1$w1region == "A "] <- "north east"
 wave1$w1region [wave1$w1region == "B "] <- "north west"
@@ -240,13 +255,29 @@ wave1$w1strokeage[wave1$w1strokeage == -1] <- NA # not applicable
 wave1$w0strokeage[wave1$w0strokeage == -1] <- NA
 #table(wave1$w0strokeage)
 
+# Currently taking medicines/tablets/pills for high blood pressure
+wave1$w1hypertensionmeds[wave1$w1hypertensionmeds < 0] <- NA #"NA or refused"
+wave1$w1hypertensionmeds[wave1$w1hypertensionmeds < 2] <- 0 #"no"
+wave1$w1hypertensionmeds[wave1$w1hypertensionmeds == 2] <- 1 #"yes"
+#table(wave1$w1hypertensionmeds)
+
+# Remaining problems because of your strokes
+wave1$w1strokeremainproblems[wave1$w1strokeremainproblems == 2] <- 0 #"no"
+wave1$w1strokeremainproblems[wave1$w1strokeremainproblems < 0] <- NA # NA
+#table(wave1$w1strokeremainproblems)
+
 # During the last two years, have you had the emotional/psych/nervous problems?
 wave1$w1psychiatrciproblemlast2yr[wave1$w1psychiatrciproblemlast2yr == 2] <- 0 # no
 wave1$w1psychiatrciproblemlast2yr[wave1$w1psychiatrciproblemlast2yr < 0] <- NA # NA/refused/don't know
 #table(wave1$w1psychiatrciproblemlast2yr)
 
+# At what age were you told you had an emotional/psychiatric/nervious problem? May not relate to the psychosis diagnosis.
+wave1$w1psychiatricage[wave1$w1psychiatricage == -8] <- NA # "don't know"
+wave1$w1psychiatricage[wave1$w1psychiatricage == -1] <- NA # not applicable
+#table(wave1$w1psychiatricage)
+
 # Stroke (doctor diagnosed)
-#Create column called w1strokeany which defines a case where 8 is recorded in any of the hedi variables
+# Create column called w1strokeany which defines a case where 8 is recorded in any of the hedi variables
 wave1 <- wave1 %>% 
   mutate(w1strokeany = case_when(hedim01 == 8 ~ '1', 
                                  hedim02 == 8 ~ '1',
@@ -259,8 +290,8 @@ wave1 <- wave1 %>%
 #table(wave1$w1strokeany)
 #n=516
 
-#Psychosis
-#Create column called w1psychosisany which defines a case where 1 (hallucinations), 5 (schz), 6 (psychosis) is recorded in any of the hepsy variables
+# Psychosis
+# Create column called w1psychosisany which defines a case where 1 (hallucinations), 5 (schz), 6 (psychosis) is recorded in any of the hepsy variables
 wave1 <- wave1 %>%
   mutate(w1psychosisany = case_when(hepsy1 == 1 ~ '1',
                                     hepsy1 == 5 ~ '1',
@@ -293,7 +324,7 @@ wave1 <- wave1 %>%
 #table(wave1$w1psychosisany)
 #n=41
 
-#Create column called w1depression which defines a case where 3 ("depression") is recorded in any of the hepsy variables
+# Create column called w1depression which defines a case where 3 ("depression") is recorded in any of the hepsy variables
 wave1 <- wave1 %>%
   mutate(w1depression = case_when(hepsy1 == 3 ~ '1',
                                   hepsy2 == 3 ~ '1',
@@ -307,7 +338,7 @@ wave1 <- wave1 %>%
                                   TRUE ~ '0'))
 #table(wave1$w1depression) # n=669
 
-#Create column called w1anxiety which defines a case where 2 ("anxiety") is recorded in any of the hepsy variables
+# Create column called w1anxiety which defines a case where 2 ("anxiety") is recorded in any of the hepsy variables
 wave1 <- wave1 %>%
   mutate(w1anxiety = case_when(hepsy1 == 2 ~ '1',
                                hepsy2 == 2 ~ '1',
@@ -321,18 +352,18 @@ wave1 <- wave1 %>%
                                TRUE ~ '0'))
 #table(wave1$w1anxiety) # n=522
 
-#w1 smoking ever status: have you ever smoke cigarettes?
+# w1 smoking ever status: have you ever smoke cigarettes?
 table(wave1$w1smokeever)
 wave1$w1smokeever[wave1$w1smokeever == 2] <- 0 # no
 wave1$w1smokeever[wave1$w1smokeever < 0] <- NA # refused/dont know/not applicable
 
-#w1 smoking status: do you smoke cigarettes at all nowadays?
+# w1 smoking status: do you smoke cigarettes at all nowadays?
 wave1$w1smokenow[wave1$w1smokenow == 2] <- "No" # no
 wave1$w1smokenow[wave1$w1smokenow == 1] <- "Yes"
 wave1$w1smokenow[wave1$w1smokenow == -1] <- "No" # question not applicable but can be coded as 'no' based on responses to smokeever
 #table(wave1$w1smokeever, wave1$w1smokenow)
 
-#w1 alcohol: In the past 12 months have you taken an alcoholic drink …? frequency
+# w1 alcohol: In the past 12 months have you taken an alcoholic drink …? frequency
 wave1$w1alcohol[wave1$w1alcohol == 1] <- "Twice a day or more"
 wave1$w1alcohol[wave1$w1alcohol == 2] <- "Daily or almost daily"
 wave1$w1alcohol[wave1$w1alcohol == 3] <- "Once or twice a week"
@@ -342,7 +373,7 @@ wave1$w1alcohol[wave1$w1alcohol == 6] <- "Not at all"
 wave1$w1alcohol[wave1$w1alcohol < 0] <- NA # refused/dont know/not applicable
 #table(wave1$w1alcohol)
 
-#w1 vigorous physical activity: Do you take part in sports or activities that are vigorous ….? frequency in daily life
+# w1 vigorous physical activity: Do you take part in sports or activities that are vigorous ….? frequency in daily life
 wave1$w1vigorousphyact[wave1$w1vigorousphyact == 1] <- "more than once a week"
 wave1$w1vigorousphyact[wave1$w1vigorousphyact == 2] <- "once a week"
 wave1$w1vigorousphyact[wave1$w1vigorousphyact == 3] <- "one to three times a month"
@@ -351,7 +382,7 @@ wave1$w1vigorousphyact[wave1$w1vigorousphyact < 0] <- NA # refused/dont know/not
 #table(wave1$w1vigorousphyact)
 
 # ELSA wave 2 data
-#Wave 2 data collection took place June 2004 – July 2005
+# Wave 2 data collection took place June 2004 – July 2005
 
 # IMPORT DATA
 elsawave2 <- read.spss(elsawave2_file, to.data.frame = TRUE, use.value.labels = FALSE)
@@ -451,6 +482,11 @@ wave2$w2strokelast2yrm[wave2$w2strokelast2yrm < 0] <- NA
 #w2 number of strokes since last visit
 wave2$w2nstrokessincew1[wave2$w2nstrokessincew1 < 0] <- NA # not applicable
 #table(wave2$w2nstrokessincew1)
+
+# Remaining problems because of your strokes
+wave2$w2strokeremainproblems[wave2$w2strokeremainproblems == 2] <- 0 #"no"
+wave2$w2strokeremainproblems[wave2$w2strokeremainproblems < 0] <- NA # NA
+#table(wave2$w2strokeremainproblems)
 
 # Disputed w1 stroke reasons
 wave2$w2disputew1stroke[wave2$w2disputew1stroke < 0] <- NA # refused, don't know, not applicable
@@ -601,6 +637,11 @@ wave3 <- wave3 %>%
 #table(wave3$w3psychosisany)
 #n=32
 
+# Remaining problems because of your strokes
+wave3$w3strokeremainproblems[wave3$w3strokeremainproblems == 2] <- 0 #"no"
+wave3$w3strokeremainproblems[wave3$w3strokeremainproblems < 0] <- NA # NA
+#table(wave3$w3strokeremainproblems)
+
 # Disputed w2 stroke reasons
 wave3$w3disputew2stroke[wave3$w3disputew2stroke < 0] <- NA # refused, don't know, not applicable
 wave3$w3disputew2stroke[wave3$w3disputew2stroke == 1] <- "never had"
@@ -746,6 +787,11 @@ wave4 <- wave4 %>%
                                     psychosis == 1 ~ '1',
                                     TRUE ~ '0'))
 #table(wave4$w4psychosisany) #n=32
+
+# Remaining problems because of your strokes
+wave4$w4strokeremainproblems[wave4$w4strokeremainproblems == 2] <- 0 #"no"
+wave4$w4strokeremainproblems[wave4$w4strokeremainproblems < 0] <- NA # NA
+#table(wave4$w4strokeremainproblems)
 
 # Disputed w3 stroke reasons
 wave4$w4disputew3stroke[wave4$w4disputew3stroke < 0] <- NA # refused, don't know, not applicable
@@ -1434,6 +1480,7 @@ wave9[wave9$idauniq==105348, "w9region"] <- NA # these were changed to NA as con
 wave9[wave9$idauniq==116848, "w9region"] <- NA
 wave9[wave9$idauniq==909548, "w9region"] <- NA
 table(wave9$w9region, useNA = "always")
+
 
 #Create column called w9psychosisany which defines a case where 1 is recorded in w9 halluc, schz or psychosis variables
 wave9 <- wave9 %>% 
@@ -2225,7 +2272,7 @@ waves12345 <- waves12345 %>%
                                          w1participated == 1 ~ 1,
                                          TRUE ~ 0))
 
-#Remove participants that did not take part in any wave 1-9 (as they are not needed for the analyses)
+#Remove participants that did not take part in any wave 1-9 (as they are not needed for this analyses)
 waves12345 <- waves12345 %>%
   filter(wavefirstparticipate != 0)
 
@@ -2537,7 +2584,6 @@ waves12345 <- waves12345 %>%
                                 strokepsychosisorder == "stroke then died" ~ 1,
                                 TRUE ~ 0))
 
-
 #Create variable defining stroke/psychosis categories (3 groups - does not consider order of events)
 waves12345 <- waves12345 %>% 
   mutate(strokepsychosiscat = case_when(strokepsychosisorder == "psychosis only" ~ "Psychosis only", 
@@ -2675,7 +2721,248 @@ waves12345 <- waves12345 %>%
 remove(elsaindex_file, wave01998_file, wave01999_file, elsawave0_file, elsawave1_file, elsawave2_file, elsawave3_file, elsawave4_file, elsawave5_file, elsawave6_file, elsawave7_file, elsawave8_file, elsawave9_file,
        elsawave1_financial_file, elsawave2_financial_file, elsawave3_financial_file, elsawave4_financial_file, elsawave5_financial_file, elsawave6_financial_file, elsawave7_financial_file, elsawave8_financial_file, elsawave9_financial_file)
 
-waves12345_filename <- paste(output_dir, "waves12345.rda", sep="")
-
 #Save waves12345 to file as an rda file type
-save(waves12345, file = waves12345_filename)
+save(waves12345, file = paste(output_dir, "waves12345.rda", sep=""))
+
+# CREATE SURVIVAL ANALYSIS DATASETS
+
+# Stroke risk after psychosis
+
+load(file = "waves12345.rda")
+
+strokeinpsychosis_surv <- waves12345 %>%
+  select(idauniq, wavefirstparticipate, wavelastparticipate, wavefirstreport_stroke, wavefirstreport_psychosis, strokeever, psychosisever, 
+         w1age, sex, ethnicgroup, alcoholbaseline, smokingbaseline, vigorousactbaseline, netwealth_q5, region, age_cat)
+
+# Get data into right format
+strokeinpsychosis_surv$wavefirstparticipate <- as.numeric(strokeinpsychosis_surv$wavefirstparticipate)
+strokeinpsychosis_surv$wavelastparticipate <- as.numeric(strokeinpsychosis_surv$wavelastparticipate)
+strokeinpsychosis_surv$wavefirstreport_stroke <- as.numeric(strokeinpsychosis_surv$wavefirstreport_stroke)
+strokeinpsychosis_surv$wavefirstreport_psychosis <- as.numeric(strokeinpsychosis_surv$wavefirstreport_psychosis)
+strokeinpsychosis_surv$strokeever <- as.numeric(strokeinpsychosis_surv$strokeever)
+strokeinpsychosis_surv$psychosisever <- as.numeric(strokeinpsychosis_surv$psychosisever)
+strokeinpsychosis_surv$netwealth_q5 <- factor(strokeinpsychosis_surv$netwealth_q5, levels = c(5, 4, 3, 2, 1))
+
+# Assign numeric labels to categorical variables (reference group == 1 i.e. the most healthy level of the variable). 
+
+# Vigorous physical activity
+strokeinpsychosis_surv$vigorousactbaseline[strokeinpsychosis_surv$vigorousactbaseline == "hardly ever, or never"] <- 4
+strokeinpsychosis_surv$vigorousactbaseline[strokeinpsychosis_surv$vigorousactbaseline == "one to three times a month"] <- 3
+strokeinpsychosis_surv$vigorousactbaseline[strokeinpsychosis_surv$vigorousactbaseline == "once a week"] <- 2
+strokeinpsychosis_surv$vigorousactbaseline[strokeinpsychosis_surv$vigorousactbaseline == "more than once a week"] <- 1
+
+# Alcohol use
+strokeinpsychosis_surv$alcoholbaseline[strokeinpsychosis_surv$alcoholbaseline == "Daily/almost daily"] <- 5
+strokeinpsychosis_surv$alcoholbaseline[strokeinpsychosis_surv$alcoholbaseline == "1-4 times/week"] <- 4
+strokeinpsychosis_surv$alcoholbaseline[strokeinpsychosis_surv$alcoholbaseline == "Monthly"] <- 3
+strokeinpsychosis_surv$alcoholbaseline[strokeinpsychosis_surv$alcoholbaseline == "Rarely/special occasions only"] <- 2
+strokeinpsychosis_surv$alcoholbaseline[strokeinpsychosis_surv$alcoholbaseline == "Not at all"] <- 1
+
+# First, account for strokes reported in wave 0 e.g. wave 0.5 (0 is already used to mean no stroke). 
+# Where first reported stroke is 0.5, use 0.5 as first wave, otherwise use 'wavefirstparticipate'.
+strokeinpsychosis_surv <- strokeinpsychosis_surv %>%
+  mutate(wavefirstparticipate = case_when(wavefirstreport_stroke == 0.5 ~ 0.5,
+                                          TRUE ~ wavefirstparticipate))
+
+# Create follow-up time variables
+strokeinpsychosis_surv <- strokeinpsychosis_surv %>%
+  mutate(fuptime = case_when(psychosisever == 1 & strokeever == 0 ~ wavelastparticipate - wavefirstreport_psychosis, #psychosis but no stroke, f-up starts from report of psychosis to last wave participated
+                             psychosisever == 0 & strokeever == 1 ~ wavefirstreport_stroke - wavefirstparticipate, #stroke but no psychosis, f-up starts from wave first participated until stroke is reported
+                             psychosisever == 0 & strokeever == 0 ~ wavelastparticipate - wavefirstparticipate, #no stroke and no psychosis, use full available follow-up (from first wave to last wave participated)
+                             wavefirstreport_stroke > 0 & wavefirstreport_stroke < wavefirstreport_psychosis ~ 0, #if first stroke happened prior to report of psychosis, then f-up time = 0
+                             wavefirstreport_stroke == wavefirstreport_psychosis ~ 0, #if stroke and psychosis reported at the same time, then f-up time = 0
+                             psychosisever == 1 & strokeever == 1 ~ wavefirstreport_stroke - wavefirstreport_psychosis, #psychosis and stroke, f-up starts from report of psychosis until stroke is reported
+                             TRUE ~ 999)) # no 999s appear so everyone has been coded as per the above
+
+# Convert follow-up time from waves to years (follow-up occurred every two years i.e. *2)
+strokeinpsychosis_surv <- strokeinpsychosis_surv %>%
+  mutate(fuptime = fuptime * 2)
+
+#Create strokeever variable censored at 10 years (any events occuring after 10 years are coded as 0)
+strokeinpsychosis_surv <- strokeinpsychosis_surv %>%
+  mutate(strokeever_10 = case_when(strokeever == 1 & fuptime > 10 ~ 0,
+                                   TRUE ~ strokeever))
+
+#Create strokeever variable censored at 4 years
+strokeinpsychosis_surv <- strokeinpsychosis_surv %>%
+  mutate(strokeever_4 = case_when(strokeever == 1 & fuptime > 4 ~ 0,
+                                   TRUE ~ strokeever))
+
+#table(strokeinpsychosis_surv$strokeever)
+#table(strokeinpsychosis_surv$strokeever_10)
+
+# Psychosis risk after stroke
+
+load(file = "waves12345.rda")
+
+#Pull out variables needed for this analysis (psychosis in stroke population - outcome, exposure and covariates)
+psychosisinstroke_surv <- waves12345 %>%
+  select(idauniq, wavefirstparticipate, wavelastparticipate, wavefirstreport_stroke, wavefirstreport_psychosis, strokeever, psychosisever, 
+         w1age, sex, ethnicgroup, alcoholbaseline, smokingbaseline, vigorousactbaseline, netwealth_q5, region, age_cat)
+
+#Get data into right format
+psychosisinstroke_surv$wavefirstparticipate <- as.numeric(psychosisinstroke_surv$wavefirstparticipate)
+psychosisinstroke_surv$wavelastparticipate <- as.numeric(psychosisinstroke_surv$wavelastparticipate)
+psychosisinstroke_surv$wavefirstreport_stroke <- as.numeric(psychosisinstroke_surv$wavefirstreport_stroke)
+psychosisinstroke_surv$wavefirstreport_psychosis <- as.numeric(psychosisinstroke_surv$wavefirstreport_psychosis)
+psychosisinstroke_surv$strokeever <- as.numeric(psychosisinstroke_surv$strokeever)
+psychosisinstroke_surv$psychosisever <- as.numeric(psychosisinstroke_surv$psychosisever)
+psychosisinstroke_surv$netwealth_q5 <- factor(psychosisinstroke_surv$netwealth_q5, levels = c(5, 4, 3, 2, 1))
+
+#Assign numeric labels to cateogrical variables (reference group == 1 i.e. the most healthy level of the variable). 
+#If the categories are used then results are not shown in an order than makes sense.
+
+#Vigorous physical activity
+psychosisinstroke_surv$vigorousactbaseline[psychosisinstroke_surv$vigorousactbaseline == "hardly ever, or never"] <- 4
+psychosisinstroke_surv$vigorousactbaseline[psychosisinstroke_surv$vigorousactbaseline == "more than once a week"] <- 1
+psychosisinstroke_surv$vigorousactbaseline[psychosisinstroke_surv$vigorousactbaseline == "once a week"] <- 2
+psychosisinstroke_surv$vigorousactbaseline[psychosisinstroke_surv$vigorousactbaseline == "one to three times a month"] <- 3
+#table(psychosisinstroke_surv$vigorousactbaseline)
+
+#Alcohol use
+psychosisinstroke_surv$alcoholbaseline[psychosisinstroke_surv$alcoholbaseline == "1-4 times/week"] <- 4
+psychosisinstroke_surv$alcoholbaseline[psychosisinstroke_surv$alcoholbaseline == "Daily/almost daily"] <- 5
+psychosisinstroke_surv$alcoholbaseline[psychosisinstroke_surv$alcoholbaseline == "Monthly"] <- 3
+psychosisinstroke_surv$alcoholbaseline[psychosisinstroke_surv$alcoholbaseline == "Not at all"] <- 1
+psychosisinstroke_surv$alcoholbaseline[psychosisinstroke_surv$alcoholbaseline == "Rarely/special occasions only"] <- 2
+#table(psychosisinstroke_surv$alcoholbaseline)
+#table(psychosisinstroke_surv$ethnicgroup)
+
+# First, account for strokes reported in wave 0 e.g. wave 0.5 (0 is already used to mean no stroke). 
+# Where first reported stroke is 0.5, use 0.5 as first wave, otherwise use 'wavefirstparticipate'.
+psychosisinstroke_surv <- psychosisinstroke_surv %>%
+  mutate(wavefirstparticipate = case_when(wavefirstreport_stroke == 0.5 ~ 0.5,
+                                          TRUE ~ wavefirstparticipate))
+
+#Create follow-up time variables
+psychosisinstroke_surv <- psychosisinstroke_surv %>%
+  mutate(fuptime = case_when(psychosisever == 1 & strokeever == 0 ~ wavefirstreport_psychosis - wavefirstparticipate, #psychosis but no stroke, f-up starts from wave first participated until first report of psychosis
+                             psychosisever == 0 & strokeever == 1 ~ wavelastparticipate - wavefirstreport_stroke, #stroke but no psychosis, f-up starts from wave stroke first reported until wave last participated
+                             psychosisever == 0 & strokeever == 0 ~ wavelastparticipate - wavefirstparticipate, #no stroke and no psychosis, use full available follow-up (from first wave to last wave participated)
+                             wavefirstreport_psychosis > 0 & wavefirstreport_psychosis < wavefirstreport_stroke ~ 0, #if first psychosis report happened prior to report of stroke, then f-up time = 0
+                             wavefirstreport_stroke == wavefirstreport_psychosis ~ 0, #if stroke and psychosis reported at the same time, then f-up time = 0
+                             psychosisever == 1 & strokeever == 1 ~ wavefirstreport_psychosis - wavefirstreport_stroke, #psychosis and stroke, f-up starts from first report of stroke until psychosis is reported
+                             TRUE ~ 999))      
+# no 999s appear so everyone has been coded as per the above
+
+#Convert follow-up time from waves to years (follow-up occurred every two years i.e. *2)
+psychosisinstroke_surv <- psychosisinstroke_surv %>%
+  mutate(fuptime = fuptime * 2)
+
+#Create psychosisever variable censored at 10 years
+psychosisinstroke_surv <- psychosisinstroke_surv %>%
+  mutate(psychosisever_10 = case_when(psychosisever == 1 & fuptime > 10 ~ 0,
+                                      TRUE ~ psychosisever))
+
+#Create psychosisever variable censored at 4 years
+psychosisinstroke_surv <- psychosisinstroke_surv %>%
+  mutate(psychosisever_4 = case_when(psychosisever == 1 & fuptime > 4 ~ 0,
+                                      TRUE ~ psychosisever))
+
+
+#Merge censored variables into both dataframes
+censoredvar_psychosis <- psychosisinstroke_surv %>%
+  select(idauniq, psychosisever_10, psychosisever_4)
+
+censoredvar_stroke <- strokeinpsychosis_surv %>%
+  select(idauniq, strokeever_10, strokeever_4)
+
+psychosisinstroke_surv <- merge(psychosisinstroke_surv, censoredvar_stroke, by="idauniq", all = TRUE)
+strokeinpsychosis_surv <- merge(strokeinpsychosis_surv, censoredvar_psychosis, by="idauniq", all = TRUE)
+
+remove(censoredvar_psychosis, censoredvar_stroke)
+
+save(strokeinpsychosis_surv, file = paste(output_dir, "strokeinpsychosis_surv.rda", sep=""))
+save(psychosisinstroke_surv, file = paste(output_dir, "psychosisinstroke_surv.rda", sep=""))
+
+# MULTIPLE IMPUTATION
+
+#Alvin: load files
+load(file = "waves12345.rda")
+load(file = "strokeinpsychosis_surv.rda")
+load(file = "psychosisinstroke_surv.rda")
+
+#Select variables for inclusion in multiple imputation (baseline covariates)
+strokeinpsychosis_imp <- waves12345 %>%
+  select(idauniq, netwealth_q5, alcoholbaseline, smokingbaseline, vigorousactbaseline, w1age, sex, region, ethnicgroup)
+
+# Convert characters into factors
+strokeinpsychosis_imp$netwealth_q5 <- as.factor(strokeinpsychosis_imp$netwealth_q5)
+strokeinpsychosis_imp$alcoholbaseline <- as.factor(strokeinpsychosis_imp$alcoholbaseline)
+strokeinpsychosis_imp$smokingbaseline <- as.factor(strokeinpsychosis_imp$smokingbaseline)
+strokeinpsychosis_imp$vigorousactbaseline <- as.factor(strokeinpsychosis_imp$vigorousactbaseline)
+strokeinpsychosis_imp$sex <- as.factor(strokeinpsychosis_imp$sex)
+strokeinpsychosis_imp$region <- as.factor(strokeinpsychosis_imp$region)
+strokeinpsychosis_imp$ethnicgroup <- as.factor(strokeinpsychosis_imp$ethnicgroup)
+
+# Change 'unknown' ethnicities to NA
+strokeinpsychosis_imp$ethnicgroup[strokeinpsychosis_imp$ethnicgroup == "Unknown"] <- NA
+
+# Make sure format of data is a data frame (required for missForest to run)
+strokeinpsychosis_imp <- as.data.frame(strokeinpsychosis_imp)
+
+# Register parallel process with doParallel
+registerDoParallel()
+
+# Set seed for reproducibility
+registerDoRNG(seed = 123)
+
+# Record start time
+start_time <- Sys.time()
+
+# Impute
+data.imp <- missForest(xmis = strokeinpsychosis_imp, parallelize = "forests")
+
+# Record end time
+end_time <- Sys.time()
+
+# Report time duration of missForest imputation
+end_time - start_time
+
+# Check normalized root mean squared error
+data.imp$OOBerror
+
+# Create data frame with imputed data
+imputeddata <- data.imp$ximp
+
+# Pull out other variables needed for this survival analysis
+strokeinpsychosis_variables <- strokeinpsychosis_surv %>%
+  select(idauniq, strokeever, psychosisever, fuptime, age_cat, strokeever_10, strokeever_4, psychosisever_10, psychosisever_4)
+
+# Merge imputed data with newly created data frame above
+strokeinpsychosis_imp <- merge(strokeinpsychosis_variables, imputeddata, by="idauniq", all.x = TRUE) # all.y keeps unmatched records in the second file, all.x would keep all unmatched records from first file.
+
+# Create new data frame for this survival analysis
+psychosisinstroke_imp <- strokeinpsychosis_imp
+
+# Remove stroke in psychosis f-up time variable
+psychosisinstroke_imp$fuptime <- NULL
+
+# Merge in psychosis in stroke f-up time variable 
+psychosisinstroke_variables <- psychosisinstroke_surv %>%
+  select(idauniq, fuptime)
+
+psychosisinstroke_imp <- merge(psychosisinstroke_variables, psychosisinstroke_imp, by="idauniq", all.x = TRUE) # all.y keeps unmatched records in the second file, all.x would keep all unmatched records from first file.
+
+psychosisinstroke_imp$netwealth_q5 <- factor(psychosisinstroke_imp$netwealth_q5, levels = c(5, 4, 3, 2, 1))
+strokeinpsychosis_imp$netwealth_q5 <- factor(strokeinpsychosis_imp$netwealth_q5, levels = c(5, 4, 3, 2, 1))
+
+
+#Save files
+save(strokeinpsychosis_imp, file = paste(output_dir, "strokeinpsychosis_imp.rda", sep=""))
+save(psychosisinstroke_imp, file = paste(output_dir, "psychosisinstroke_imp.rda", sep=""))
+
+#Versions
+
+# packageVersion("dplyr")
+
+# packageVersion("foreign")
+
+# packageVersion("stringr")
+
+# packageVersion("missForest")
+
+# packageVersion("doParallel")
+
+# packageVersion("doRNG")
+
