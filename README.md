@@ -1,6 +1,6 @@
 Analysis code and results for the study
 
-# Bidirectional trajectories of stroke and psychosis: A 16-year longitudinal population study of older adults
+# Longitudinal associations of stroke and psychosis: a population-based study of older adults
 
 <p align="center">
 	<a href="https://en.wikipedia.org/wiki/R_(programming_language)"><img
