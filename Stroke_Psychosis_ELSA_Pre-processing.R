@@ -18,7 +18,7 @@
 # - Creation of multiple imputation datasets for survival analysis
 
 # Clear memory
-rm(list = ls())
+# rm(list = ls())
 
 # Load packages
 library(dplyr)      # used as main data manipulation package
@@ -243,9 +243,6 @@ wave1[wave1$idauniq==108802, "w1region"] <- NA # changed to NA as appeared to be
 wave1[wave1$idauniq==103723, "w1region"] <- NA # changed to NA as appeared to be a blank space in this field
 #table(wave1$w1region, useNA = "always")
 
-# Sex
-wave1$sex <- factor(wave1$sex, levels = c(1,2), labels = c("male", "female"))
-
 # Stroke age
 wave1$w1strokeage[wave1$w1strokeage == -8] <- NA # "don't know"
 wave1$w1strokeage[wave1$w1strokeage == -1] <- NA # not applicable
@@ -254,12 +251,6 @@ wave1$w1strokeage[wave1$w1strokeage == -1] <- NA # not applicable
 # Stroke age (fed forward from HSE survey, ELSA wave 0)
 wave1$w0strokeage[wave1$w0strokeage == -1] <- NA
 #table(wave1$w0strokeage)
-
-# Currently taking medicines/tablets/pills for high blood pressure
-wave1$w1hypertensionmeds[wave1$w1hypertensionmeds < 0] <- NA #"NA or refused"
-wave1$w1hypertensionmeds[wave1$w1hypertensionmeds < 2] <- 0 #"no"
-wave1$w1hypertensionmeds[wave1$w1hypertensionmeds == 2] <- 1 #"yes"
-#table(wave1$w1hypertensionmeds)
 
 # Remaining problems because of your strokes
 wave1$w1strokeremainproblems[wave1$w1strokeremainproblems == 2] <- 0 #"no"
@@ -2965,4 +2956,3 @@ save(psychosisinstroke_imp, file = paste(output_dir, "psychosisinstroke_imp.rda"
 # packageVersion("doParallel")
 
 # packageVersion("doRNG")
-
