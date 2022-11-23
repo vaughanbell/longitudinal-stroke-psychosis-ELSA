@@ -1,6 +1,6 @@
 Analysis code and results for the study
 
-# Longitudinal associations of stroke and psychosis: a population-based study of older adults
+# Longitudinal associations between stroke and psychosis: a population-based study
 
 <p align="center">
 	<a href="https://en.wikipedia.org/wiki/R_(programming_language)"><img
@@ -16,7 +16,7 @@ Analysis code and results for the study
 
 Code written by Alvin Richards-Belle with review and modifications by Vaughan Bell
 
-Publication status: currently awaiting [pre-print](https://not_online_yet).
+Publication status: available as a pre-print at [https://doi.org/10.1101/2022.11.22.22282626](https://www.medrxiv.org/content/10.1101/2022.11.22.22282626v1).
 
 This archive contains the R code for the analysis reported in the above study. The code is presented as a base R script and [Jupyter notebooks](https://jupyter-notebook-beginner-guide.readthedocs.io/en/latest/what_is_jupyter.html) which are documents that combine both code and the output in a form that can be viewed online, but also re-run and the results reproduced when accompanied by the original datasets.
 
